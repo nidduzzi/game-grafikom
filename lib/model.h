@@ -1,6 +1,6 @@
 // Ahmad Izzuddin 1908919 C2 2019
 // Fajar Zuliansyah Trihutama 1905394 C2 2019
-
+// Muhammad Iqbal Zain 1901423 C2 2019
 #ifndef MODEL_H
 #define MODEL_H
 
