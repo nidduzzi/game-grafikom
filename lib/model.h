@@ -6,7 +6,6 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
-
 #include <bits/stdc++.h>
 #include <fstream>
 #include <sstream>
@@ -34,7 +33,12 @@ public:
         // Load texture
         // ============
         std::cout << "Loading texture file: " << texture_address.c_str() << "\n";
-        m_t_data = stbi_load(texture_address.c_str(), &m_width, &m_height, &m_nrChannels, 0);
+        if ((texture_address.substr(texture_address.size() - 4, texture_address.size())).compare(".png"))
+        {
+            std::cerr << "texture file type not *.png!\n";
+            exit(1);
+        }
+        m_t_data = stbi_load(texture_address.c_str(), &m_width, &m_height, &m_nrChannels, STBI_rgb_alpha);
 
         // Load model from .obj file
         // =========================
@@ -160,6 +164,7 @@ public:
         {
            delete[] this->indeces;
            delete[] this->vertices;
+           stbi_image_free(this->m_t_data);
         }
         catch(...)
         {

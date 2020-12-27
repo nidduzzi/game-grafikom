@@ -6,11 +6,14 @@ opengl car obstacle game
 
 include file: `model.h`  
 
+model_t only accepts models from wavefront(.obj) files with the components vertex positions, vertex normals, texture cooredinates, and triangular faces.  
+model_t only accepts textures from .png files with up to 16-bit channels.  
+
 For uniform initialization:  
-`model_t foo{"path/to/model.obj", "path/to/texture.jpg"};`  
+`model_t foo{"path/to/model.obj", "path/to/texture.png"};`  
 
 For copy initialization:  
-`model_t foo = model_t("path/to/model.obj", "path/to/texture.jpg");`  
+`model_t foo = model_t("path/to/model.obj", "path/to/texture.png");`  
 
 model_t class attributes:  
 texture stbi data: `unsigned char *m_t_data`  
@@ -31,3 +34,4 @@ WARNING: Some methods that needs to be private still are exposed
 `void print()`: prints atributes head to stdout  
 `void makeVerticesIndeces()` WARNING, do not call this: builds `vertices`, `indeces`, and their sepective nums  
 `model_t(std::string model_address, std::string texture_address)`: constructor  
+`~model_t()`: deconstructor  
