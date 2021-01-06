@@ -136,19 +136,35 @@ int main()
     std::cerr << "model loading: " << glGetError() << "\n";
 
     // loop vars
-    const int numObjects{8};
-    object_t Objects[numObjects]{{Models[0], glm::vec3(0.0f, 0.0f, 0.0f)}, {Models[1], glm::vec3(2.0f, 5.0f, -11.0f)}, {Models[2], glm::vec3(-1.5f, -2.2f, -2.5f)}, {Models[3], glm::vec3(0.5f, 2.2f, -5.5f)}, {Models[0], glm::vec3(-3.8f, -2.0f, -8.3f)}, {Models[4], glm::vec3(1.5f, 2.2f, -2.5f)}, {Models[5], glm::vec3(-15.0f, 3.2f, -5.5f)}, {Models[6], glm::vec3(-3.5f, 10.2f, -25.5f)}};
+    const int numObjects{7};
+    object_t Objects[numObjects]{
+    {Models[0], glm::vec3(0.0f, -0.5f, 0.0f)}, // Aspal
+    {Models[1], glm::vec3(0.0f, 0.0f, 0.0f)}, // Mobil item
+    {Models[6], glm::vec3(-2.0f, 0.0f, -20.0f)}, // apel
+    {Models[5], glm::vec3(0.5f, 0.0f, -30.0f)}, // tamia
+    {Models[4], glm::vec3(8.0f, 0.0f, -18.5f)}, // Mobil tua
+    {Models[3], glm::vec3(0.0f, 0.0f, -38.5f)}, // Badak
+    {Models[2], glm::vec3(0.0f, 0.3f, -45.0f)} // Kursi
+    //{Models[0], glm::vec3(-3.8f, 0.0f, -8.3f)} // Aspal lagi
+
+
+    };
     double old_time{glfwGetTime()}, fps_timer{glfwGetTime()}, rot_timer[numObjects]{glfwGetTime()}, rot_time[numObjects]{glfwGetTime()};
     int fps_count{}, activeObject{3}, old_active{3};
     unsigned int err{glGetError()};
     bool activeTimer_started{false};
     for (int i = 0; i < numObjects; ++i)
     {
-        float angle = 20.0f * static_cast<float>(i);
+        //float angle = 20.0f * static_cast<float>(i);
+        float angle = 0.0f * static_cast<float>(i);
         Objects[i].rotate_to(glm::radians(angle) + glm::radians(static_cast<glm::f32>(glfwGetTime())), glm::vec3(1.0f, 0.3f, 0.5f));
     }
     // render loop
     // -----------
+    activeObject = 1; //Setting object ke main object
+    Objects[1].rotate_by(glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
+    Objects[3].rotate_by(glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
+    Objects[4].rotate_by(glm::radians(90.0f), glm::vec3(0.0, -1.0, 0.0));
     while (!glfwWindowShouldClose(window))
     {
         // input
@@ -167,19 +183,27 @@ int main()
         }
         // render
         // ------
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
         if ((err = glGetError()))
             std::cout << "\n\nglClearColor(0.2f, 0.2f, 0.2f, 1.0f): " << err << "\n\n";
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
         if ((err = glGetError()))
             std::cout << "\n\nglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT): " << err << "\n\n";
+
+
         // activate shader
         ourShader.use();
         // create transformations
         glm::mat4 view = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
         glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(95.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        glm::vec3 negation = glm::vec3(-1.0f);
+        view = glm::translate(view, Objects[activeObject].get_pos() * negation );
+
+
+
         // pass transformation matrices to the shader
         ourShader.setMat4("projection", projection); // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
         if ((err = glGetError()))
@@ -188,25 +212,33 @@ int main()
         if ((err = glGetError()))
             std::cout << "\n\nourShader.setMat4(\"view\", view): " << err << "\n\n";
         // render models
+
+
+
+
         for (int i = 0; i < numObjects; i++)
         {
             glBindVertexArray((Objects[i].m_model->VAO));
+
+
             if ((err = glGetError()))
                 std::cout << "\n\nglBindVertexArray((Objects[" << i << "].m_model->VAO)): " << err << "\n\n";
             glBindTexture(GL_TEXTURE_2D, (Objects[i].m_model->VTO));
             if ((err = glGetError()))
                 std::cout << "\n\nglBindTexture(GL_TEXTURE_2D, (Objects[" << i << "].m_model->VTO)): " << err << "\n\n";
+
+
             // calculate the model matrix for each object and pass it to shader before drawing
             // rotate models not currently controled by the user
 
             if (i != activeObject)
             {
                 rot_time[i] = glfwGetTime();
-                if (fabs(rot_time[i] - rot_timer[i]) > 0.001)
-                {
-                    Objects[i].rotate_by(glm::radians(static_cast<glm::f32>((rot_time[i] - rot_timer[i]) * 100.0)), glm::vec3(1.0f, 0.3f * i, 0.5f));
-                    rot_timer[i] = rot_time[i];
-                }
+//                if (fabs(rot_time[i] - rot_timer[i]) > 0.001)
+//                {
+//                    Objects[i].rotate_by(glm::radians(static_cast<glm::f32>((rot_time[i] - rot_timer[i]) * 100.0)), glm::vec3(1.0f, 0.3f * i, 0.5f));
+//                    rot_timer[i] = rot_time[i];
+//                }
             }
             ourShader.setMat4("model", Objects[i].get_model_mat());
             if ((err = glGetError()))
@@ -310,11 +342,12 @@ void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int 
             Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 0.0, 1.0));
         }
         // y-axis
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+        //ARROW LEFT RIGHT - swapped with  F G ----------------------------------
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
         {
             Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
         }
-        else if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         {
             Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
         }
@@ -339,19 +372,23 @@ void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int 
         }
         // Translate
         // =========
+        //glm::vec3 temp = glm::vec3(1.0) ;
+
+        //temp = glm::rotate(temp, glm::radians( Objects[activeObject].get_angle()) , glm::vec3(1.0f, 0.3f, 0.5f));
+
         if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         {
-            Objects[activeObject].move_by(glm::vec3(0.0, 0.1, 0.0));
+            Objects[activeObject].move_by(glm::vec3(0.0, 0.0, -0.1) );
         }
         if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         {
-            Objects[activeObject].move_by(glm::vec3(0.0, -0.1, 0.0));
+            Objects[activeObject].move_by(glm::vec3(0.0, 0.0, 0.1));
         }
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
         {
             Objects[activeObject].move_by(glm::vec3(-0.1, 0.0, 0.0));
         }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
         {
             Objects[activeObject].move_by(glm::vec3(0.1, 0.0, 0.0));
         }
