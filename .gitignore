@@ -31,3 +31,9 @@
 *.exe
 *.out
 *.app
+
+# Codeblocks files
+*.depend
+*.layout
+*.cbp
+*.out
