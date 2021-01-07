@@ -13,14 +13,7 @@
 #include "../lib/object.hpp"
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int &activeObject);
-
-// !DEBUG
-unsigned int getError_from_GL()
-{
-    return glGetError();
-}
-// !DEBUG
+void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject);
 
 // settings
 const unsigned int SCR_WIDTH = 1920;
@@ -41,7 +34,10 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "UTS", NULL, NULL);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "UAS Grafikom", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -61,9 +57,9 @@ int main()
 
     // configure global opengl state
     // -----------------------------
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     std::cerr << "enable gl & load: " << glGetError() << "\n";
     // build and compile our shader zprogram
@@ -116,14 +112,6 @@ int main()
         {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (*(Models[i])).m_width, (*(Models[i])).m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (*(Models[i])).m_t_data);
             glGenerateMipmap(GL_TEXTURE_2D);
-            if (i == 6)
-            {
-                for (int j = 161; j < 171; ++j)
-                {
-                    unsigned char *offset = (*(Models[i])).m_t_data + (738 + (*(Models[i])).m_height * j) * (*(Models[i])).m_nrChannels;
-                    std::cout << "pixel data: r=" << static_cast<int>(offset[0]) << " b=" << static_cast<int>(offset[1]) << " g=" << static_cast<int>(offset[2]) << " a=" << static_cast<int>(offset[3]) << "\n";
-                }
-            }
         }
         else
         {
@@ -136,51 +124,28 @@ int main()
     std::cerr << "model loading: " << glGetError() << "\n";
 
     // loop vars
-    const int numObjects{7};
-    object_t Objects[numObjects]{
-    {Models[0], glm::vec3(0.0f, -0.5f, 0.0f)}, // Aspal
-    {Models[1], glm::vec3(0.0f, 0.0f, 0.0f)}, // Mobil item
-    {Models[6], glm::vec3(-2.0f, 0.0f, -20.0f)}, // apel
-    {Models[5], glm::vec3(0.5f, 0.0f, -30.0f)}, // tamia
-    {Models[4], glm::vec3(8.0f, 0.0f, -18.5f)}, // Mobil tua
-    {Models[3], glm::vec3(0.0f, 0.0f, -38.5f)}, // Badak
-    {Models[2], glm::vec3(0.0f, 0.3f, -45.0f)} // Kursi
-    //{Models[0], glm::vec3(-3.8f, 0.0f, -8.3f)} // Aspal lagi
-
+    std::vector<object_t> Objects{
+        {Models[0], glm::vec3(0.0f, -0.5f, 0.0f)},   // Aspal
+        {Models[1], glm::vec3(0.0f, 0.0f, 0.0f)},    // Mobil item
+        {Models[6], glm::vec3(-2.0f, 0.0f, -20.0f)}, // apel
+        {Models[5], glm::vec3(0.5f, 0.0f, -30.0f)},  // tamia
+        {Models[4], glm::vec3(8.0f, 0.0f, -18.5f)},  // Mobil tua
+        {Models[3], glm::vec3(0.0f, 0.0f, -38.5f)},  // Badak
+        {Models[2], glm::vec3(0.0f, 0.3f, -45.0f)},   // Kursi
+        {Models[0], glm::vec3(-3.8f, 0.0f, -8.3f)} // Aspal lagi
 
     };
-    double old_time{glfwGetTime()}, fps_timer{glfwGetTime()}, rot_timer[numObjects]{glfwGetTime()}, rot_time[numObjects]{glfwGetTime()};
-    int fps_count{}, activeObject{3}, old_active{3};
+    const std::size_t numObjects{Objects.size()};
+    double old_time{glfwGetTime()}, fps_timer{glfwGetTime()};
+    int fps_count{}, activeObject{1};
     unsigned int err{glGetError()};
-    bool activeTimer_started{false};
-    for (int i = 0; i < numObjects; ++i)
-    {
-        //float angle = 20.0f * static_cast<float>(i);
-        float angle = 0.0f * static_cast<float>(i);
-        Objects[i].rotate_to(glm::radians(angle) + glm::radians(static_cast<glm::f32>(glfwGetTime())), glm::vec3(1.0f, 0.3f, 0.5f));
-    }
     // render loop
     // -----------
-    activeObject = 1; //Setting object ke main object
-    Objects[1].rotate_by(glm::radians(180.0f), glm::vec3(0.0, 1.0, 0.0));
-    Objects[3].rotate_by(glm::radians(90.0f), glm::vec3(0.0, 1.0, 0.0));
-    Objects[4].rotate_by(glm::radians(90.0f), glm::vec3(0.0, -1.0, 0.0));
     while (!glfwWindowShouldClose(window))
     {
         // input
         // -----
         processInput(window, Objects, old_time, activeObject);
-        if (activeObject != old_active)
-        {
-            rot_time[old_active] -= (glfwGetTime() - rot_timer[old_active]);
-            activeTimer_started = false;
-            old_active = activeObject;
-        }
-        else
-        {
-            rot_timer[old_active] = glfwGetTime();
-            activeTimer_started = true;
-        }
         // render
         // ------
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -191,18 +156,12 @@ int main()
         if ((err = glGetError()))
             std::cout << "\n\nglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT): " << err << "\n\n";
 
-
         // activate shader
         ourShader.use();
         // create transformations
-        glm::mat4 view = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
         glm::mat4 projection = glm::mat4(1.0f);
         projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-        glm::vec3 negation = glm::vec3(-1.0f);
-        view = glm::translate(view, Objects[activeObject].get_pos() * negation );
-
-
+        glm::mat4 view = Objects[activeObject].get_chase_cam_proj_mat();
 
         // pass transformation matrices to the shader
         ourShader.setMat4("projection", projection); // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
@@ -213,13 +172,9 @@ int main()
             std::cout << "\n\nourShader.setMat4(\"view\", view): " << err << "\n\n";
         // render models
 
-
-
-
         for (int i = 0; i < numObjects; i++)
         {
             glBindVertexArray((Objects[i].m_model->VAO));
-
 
             if ((err = glGetError()))
                 std::cout << "\n\nglBindVertexArray((Objects[" << i << "].m_model->VAO)): " << err << "\n\n";
@@ -227,19 +182,8 @@ int main()
             if ((err = glGetError()))
                 std::cout << "\n\nglBindTexture(GL_TEXTURE_2D, (Objects[" << i << "].m_model->VTO)): " << err << "\n\n";
 
-
             // calculate the model matrix for each object and pass it to shader before drawing
             // rotate models not currently controled by the user
-
-            if (i != activeObject)
-            {
-                rot_time[i] = glfwGetTime();
-//                if (fabs(rot_time[i] - rot_timer[i]) > 0.001)
-//                {
-//                    Objects[i].rotate_by(glm::radians(static_cast<glm::f32>((rot_time[i] - rot_timer[i]) * 100.0)), glm::vec3(1.0f, 0.3f * i, 0.5f));
-//                    rot_timer[i] = rot_time[i];
-//                }
-            }
             ourShader.setMat4("model", Objects[i].get_model_mat());
             if ((err = glGetError()))
                 std::cout << "\n\nourShader.setMat4(\"model\", Objects[" << i << "].get_model_mat()): " << err << "\n\n";
@@ -288,39 +232,39 @@ int main()
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int &activeObject)
+void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject)
 {
     // Set active model
     // ================
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+    if ((Objects.size() > 0) && (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS))
     {
         activeObject = 0;
     }
-    else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+    else if ((Objects.size() > 1) && (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS))
     {
         activeObject = 1;
     }
-    else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
+    else if ((Objects.size() > 2) && (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS))
     {
         activeObject = 2;
     }
-    else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
+    else if ((Objects.size() > 3) && (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS))
     {
         activeObject = 3;
     }
-    else if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
+    else if ((Objects.size() > 4) && (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS))
     {
         activeObject = 4;
     }
-    else if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
+    else if ((Objects.size() > 5) && (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS))
     {
         activeObject = 5;
     }
-    else if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
+    else if ((Objects.size() > 6) && (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS))
     {
         activeObject = 6;
     }
-    else if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
+    else if ((Objects.size() > 7) && (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS))
     {
         activeObject = 7;
     }
@@ -345,11 +289,11 @@ void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int 
         //ARROW LEFT RIGHT - swapped with  F G ----------------------------------
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
+            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
         }
         else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
+            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
         }
         // x-axis
         if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
@@ -372,17 +316,13 @@ void processInput(GLFWwindow *window, object_t Objects[], double &old_time, int 
         }
         // Translate
         // =========
-        //glm::vec3 temp = glm::vec3(1.0) ;
-
-        //temp = glm::rotate(temp, glm::radians( Objects[activeObject].get_angle()) , glm::vec3(1.0f, 0.3f, 0.5f));
-
         if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         {
-            Objects[activeObject].move_by(glm::vec3(0.0, 0.0, -0.1) );
+            Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, 0.1}});
         }
         if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         {
-            Objects[activeObject].move_by(glm::vec3(0.0, 0.0, 0.1));
+            Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.1}});
         }
         if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
         {
@@ -411,4 +351,5 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+    glfwSetWindowAspectRatio(window, width, height);
 }

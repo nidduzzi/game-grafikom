@@ -20,17 +20,27 @@ private:
     glm::quat m_rotation;            // rotation quaternion
     glm::vec3 m_scale;               // object scale (ukuran objek)
     glm::mat4 m_model_mat;           // model matrix
-    bool m_new_model_mat;            // flag for specifying when to construct a new model matrix
+    glm::mat4 m_chase_proj_mat;      // model matrix
+    bool m_changed;                  // flag for specifying when to construct a new model matrix
     std::array<glm::vec3, 8> m_hbox; // hitbox
+    void calc_mats()
+    {
+        if (this->m_changed)
+        {
+            this->m_model_mat = glm::translate(glm::mat4{1.0}, this->m_pos) * glm::mat4_cast(this->m_rotation) * glm::scale(glm::mat4{1.0}, this->m_scale);
+            this->m_chase_proj_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{0.0, 1.0, -3.0, 1.0}}, glm::vec3{this->m_pos.x, this->m_pos.y + 0.5, this->m_pos.z}, glm::vec3{0, 1, 0});
+            this->m_changed = false;
+        }
+    }
 public:
-    object_t(model_t *model, glm::vec3 pos = glm::vec3{0, 0, 0}, glm::f32 angle = 0.0F, glm::vec3 axis = glm::vec3{1, 0, 0}, glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0}) : m_model{model}, m_pos{pos}, m_angle{angle}, m_scale{scale}, m_model_mat{1.0}, m_new_model_mat{true}, m_hbox{{}}
+    object_t(model_t *model, glm::vec3 pos = glm::vec3{0, 0, 0}, glm::f32 angle = 0.0F, glm::vec3 axis = glm::vec3{1, 0, 0}, glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0}) : m_model{model}, m_pos{pos}, m_angle{angle}, m_scale{scale}, m_model_mat{1.0}, m_changed{true}, m_hbox{{}}
     {
         this->m_axis = glm::normalize(axis);
         this->m_rotation = glm::rotate(glm::quat{glm::vec3{0.0}}, angle, glm::normalize(axis));
     }
 
     // copy constructor
-    object_t(const object_t &object) : m_model{object.m_model}, m_pos{object.m_pos}, m_angle{object.m_angle}, m_axis{object.m_axis}, m_rotation{object.m_rotation}, m_scale{object.m_scale}, m_model_mat{object.m_model_mat}, m_new_model_mat{true}
+    object_t(const object_t &object) : m_model{object.m_model}, m_pos{object.m_pos}, m_angle{object.m_angle}, m_axis{object.m_axis}, m_rotation{object.m_rotation}, m_scale{object.m_scale}, m_model_mat{object.m_model_mat}, m_changed{true}
     {
     }
 
@@ -42,12 +52,13 @@ public:
     // Builds and returns a model matrix
     glm::mat4 get_model_mat()
     {
-        if (this->m_new_model_mat)
-        {
-            this->m_model_mat = glm::translate(glm::mat4{1.0}, this->m_pos) * glm::mat4_cast(this->m_rotation) * glm::scale(glm::mat4{1.0}, this->m_scale);
-            this->m_new_model_mat = false;
-        }
+        this->calc_mats();
         return this->m_model_mat;
+    }
+    glm::mat4 get_chase_cam_proj_mat()
+    {
+        this->calc_mats();
+        return this->m_chase_proj_mat;
     }
     glm::vec3 get_pos()
     {
@@ -76,14 +87,14 @@ public:
     void move_by(double dx, double dy, double dz)
     {
         this->m_pos += glm::vec3{dx, dy, dz};
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
     // move the object by a specified vector
     // @param dr move in the dr direction by dr
     void move_by(glm::vec3 dr)
     {
         this->m_pos += dr;
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
     // move object to a specified coordinates
     // @param x the x-axis coordinates
@@ -92,14 +103,14 @@ public:
     void move_to(double x, double y, double z)
     {
         this->m_pos = glm::vec3{x, y, z};
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
     // move object to a specified coordinates
     // @param coordinates the coordinates
     void move_to(glm::vec3 coordinates)
     {
         this->m_pos = coordinates;
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
     // rotates the object by angle (radians) around axis
     // @param angle angle to rotate object by in radians
@@ -110,7 +121,7 @@ public:
         this->m_rotation = this->m_rotation * tmp_quat;
         this->m_angle = glm::angle(this->m_rotation);
         this->m_axis = glm::axis(this->m_rotation);
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
     // rotates the object by the angle (radians)
     // @param angle_X rotate object by angle_X in radians around the x axis
@@ -124,7 +135,7 @@ public:
         this->m_rotation = this->m_rotation * tmp_quat;
         this->m_angle = glm::angle(this->m_rotation);
         this->m_axis = glm::axis(this->m_rotation);
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void rotate_to(glm::f32 angle, glm::vec3 axis)
@@ -132,7 +143,7 @@ public:
         this->m_angle = angle;
         this->m_axis = glm::normalize(axis);
         this->m_rotation = glm::rotate(glm::quat{glm::vec3{0.0}}, this->m_angle, this->m_axis);
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void rotate_to(glm::f32 angle_X, glm::f32 angle_Y, glm::f32 angle_Z)
@@ -142,31 +153,31 @@ public:
         this->m_rotation = glm::rotate(this->m_rotation, angle_Z, glm::vec3{0.0, 0.0, 1.0});
         this->m_angle = glm::angle(this->m_rotation);
         this->m_axis = glm::axis(this->m_rotation);
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void scale_by(glm::f32 dx, glm::f32 dy, glm::f32 dz)
     {
         this->m_scale = this->m_scale * glm::vec3{dx, dy, dz};
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void scale_by(glm::vec3 scale)
     {
         this->m_scale = this->m_scale * scale;
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void scale_to(glm::f32 dx, glm::f32 dy, glm::f32 dz)
     {
         this->m_scale = glm::vec3{dx, dy, dz};
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 
     void scale_to(glm::vec3 scale)
     {
         this->m_scale = scale;
-        this->m_new_model_mat = true;
+        this->m_changed = true;
     }
 };
 
