@@ -28,7 +28,10 @@ public:
     unsigned int *indeces;
     unsigned int num_faces, num_vertices;
     unsigned int VAO, VBO, EBO, VTO;
-    model_t(std::string model_address, std::string texture_address) : m_color{0.1f, 0.1f, 0.1f} /* Set model color*/, VAO{}, VBO{}, EBO{}, VTO{}
+    double m_max_x, m_max_y, m_max_z, m_min_x, m_min_y, m_min_z;
+
+public:
+    model_t(std::string model_address, std::string texture_address) : m_color{0.1f, 0.1f, 0.1f} /* Set model color*/, VAO{}, VBO{}, EBO{}, VTO{}, m_max_x{}, m_max_y{}, m_max_z{}, m_min_x{}, m_min_y{}, m_min_z{}
     {
         // TODO: make a constructor argument for color
         // Load texture
@@ -75,6 +78,18 @@ public:
                     buffer[i] = atof(strtok(NULL, " "));
                     maxval = std::max(maxval, std::fabs(buffer[i]));
                 }
+                if (buffer[0] > this->m_max_x)
+                    m_max_x = buffer[0];
+                else if (buffer[0] < this->m_min_x)
+                    m_min_x = buffer[0];
+                if (buffer[0] > this->m_max_y)
+                    m_max_y = buffer[1];
+                else if (buffer[0] < this->m_min_y)
+                    m_min_y = buffer[1];
+                if (buffer[0] > this->m_max_z)
+                    m_max_z = buffer[2];
+                else if (buffer[0] < this->m_min_z)
+                    m_min_z = buffer[2];
                 m_vertices.push_back(buffer);
                 delete[] l;
             }
@@ -111,6 +126,12 @@ public:
             }
         }
         // Normalize m_vertices
+        this->m_max_x = this->m_max_x / maxval;
+        this->m_max_y = this->m_max_y / maxval;
+        this->m_max_z = this->m_max_z / maxval;
+        this->m_min_x = this->m_min_x / maxval;
+        this->m_min_y = this->m_min_y / maxval;
+        this->m_min_z = this->m_min_z / maxval;
         for (int i = 0; i < static_cast<int>(m_vertices.size()); ++i)
         {
             for (int j = 0; j < 3; ++j)

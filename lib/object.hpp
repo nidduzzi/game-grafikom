@@ -20,18 +20,24 @@ private:
     glm::quat m_rotation;            // rotation quaternion
     glm::vec3 m_scale;               // object scale (ukuran objek)
     glm::mat4 m_model_mat;           // model matrix
-    glm::mat4 m_chase_proj_mat;      // model matrix
+    glm::mat4 m_chase_view_mat;      // model matrix
     bool m_changed;                  // flag for specifying when to construct a new model matrix
     std::array<glm::vec3, 8> m_hbox; // hitbox
+    double m_x_len;
+    double m_y_len;
+    double m_z_len;
+
+private:
     void calc_mats()
     {
         if (this->m_changed)
         {
             this->m_model_mat = glm::translate(glm::mat4{1.0}, this->m_pos) * glm::mat4_cast(this->m_rotation) * glm::scale(glm::mat4{1.0}, this->m_scale);
-            this->m_chase_proj_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{0.0, 1.0, -3.0, 1.0}}, glm::vec3{this->m_pos.x, this->m_pos.y + 0.5, this->m_pos.z}, glm::vec3{0, 1, 0});
+            this->m_chase_view_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{0.0, this->m_model->m_max_y + 1.4, -5.0, 1.0}}, glm::vec3{this->m_pos.x, this->m_pos.y + this->m_model->m_max_y + 0.05, this->m_pos.z}, glm::vec3{0, 1, 0});
             this->m_changed = false;
         }
     }
+
 public:
     object_t(model_t *model, glm::vec3 pos = glm::vec3{0, 0, 0}, glm::f32 angle = 0.0F, glm::vec3 axis = glm::vec3{1, 0, 0}, glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0}) : m_model{model}, m_pos{pos}, m_angle{angle}, m_scale{scale}, m_model_mat{1.0}, m_changed{true}, m_hbox{{}}
     {
@@ -55,10 +61,10 @@ public:
         this->calc_mats();
         return this->m_model_mat;
     }
-    glm::mat4 get_chase_cam_proj_mat()
+    glm::mat4 get_chase_cam_view_mat()
     {
         this->calc_mats();
-        return this->m_chase_proj_mat;
+        return this->m_chase_view_mat;
     }
     glm::vec3 get_pos()
     {
@@ -178,6 +184,16 @@ public:
     {
         this->m_scale = scale;
         this->m_changed = true;
+    }
+
+    bool operator==(const object_t &rhs)
+    {
+        return (this == &rhs);
+    }
+
+    bool operator!=(const object_t &rhs)
+    {
+        return !(this->operator==(rhs));
     }
 };
 
