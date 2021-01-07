@@ -16,13 +16,10 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject, int &activeCam);
 void toggle_key(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    static bool c_pressed;
-    if(key == GLFW_KEY_C && action == GLFW_PRESS && !c_pressed)
+    if(key == GLFW_KEY_C && action == GLFW_PRESS)
     {
         activeCam = (activeCam + 1) % 2;
-        c_pressed = !c_pressed;
     }
-    else c_pressed = !c_pressed;
 }
 // settings
 unsigned int SCR_WIDTH = 1000;
@@ -391,14 +388,6 @@ void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &ol
             }
             Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.2}});
         }
-        // if ((glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) && !camChanged)
-        // {
-        //     activeCam = (activeCam + 1) % 2;
-        //     camChanged = !camChanged;
-        // }
-        // else if(glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
-        //     camChanged = !camChanged;
-        // else camChanged = false;
         old_time = glfwGetTime();
     }
 }
