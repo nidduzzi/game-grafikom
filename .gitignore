@@ -32,9 +32,12 @@
 *.out
 *.app
 
-# Codeblocks files
-*.depend
+### CodeBlocks ###
+# specific to CodeBlocks IDE
 *.layout
+*.depend
 *.cbp
 *.out
-game-grafikom/game-grafikom.depend
+# generated directories
+game-grafikom/bin/
+game-grafikom/obj/
