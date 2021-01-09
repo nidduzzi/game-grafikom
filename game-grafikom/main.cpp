@@ -14,16 +14,63 @@
 int activeCam{0};
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject, int &activeCam);
+
 void toggle_key(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if(key == GLFW_KEY_C && action == GLFW_PRESS)
     {
-        activeCam = (activeCam + 1) % 2;
+        activeCam = (activeCam + 1) % 3;
     }
 }
+
 // settings
 unsigned int SCR_WIDTH = 1000;
 unsigned int SCR_HEIGHT = 1000;
+
+// settings for look around
+glm::vec3 aroundCam = glm::vec3(0.0f, 0.0f, 0.0f);
+bool firstMouse = true;
+float yaw = -90.0f;
+float pitch = 0.0f;
+float lastX = SCR_WIDTH / 1.0;
+float lastY = SCR_HEIGHT / 1.0;
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos){
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    float xoffset = lastX - xpos;
+    float yoffset = lastY - ypos;
+
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.2f;
+
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+    yaw += xoffset;
+    pitch += yoffset;
+
+    if (pitch > 180.0f)
+    pitch = 180.0f;
+
+    if (pitch < -180.0f)
+    pitch = -180.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    aroundCam = glm::normalize(front);
+}
+
 
 int main()
 {
@@ -66,6 +113,7 @@ int main()
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, toggle_key);
+
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -162,8 +210,10 @@ int main()
     glm::mat4 eagle_view{glm::lookAt(glm::vec3{0.0f, std::max(arena_length, arena_width) / (std::tan(glm::radians(FOV / 2.0f))), 0.0f}, glm::vec3{}, glm::vec3{0.0, 0.0, 1.0})};
     const std::size_t numObjects{Objects.size()};
     double old_time{glfwGetTime()}, fps_timer{glfwGetTime()};
-    int fps_count{}, activeObject{0}, numCams{2};
+    int fps_count{}, activeObject{0}, numCams{3};
     unsigned int err{glGetError()};
+
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     // render loop
     // -----------
@@ -175,6 +225,11 @@ int main()
         // render
         // ------
         glClearColor(191.0f / 255.0f, 224.0f / 255.0f, 1.0f, 1.0f);
+
+        //timing for smooth around view
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
         if ((err = glGetError()))
             std::cerr << "\n\nglClearColor(191.0f / 255.0f, 224.0f / 255.0f, 1.0f, 1.0f): " << err << "\n\n";
@@ -188,8 +243,12 @@ int main()
         glm::mat4 projection = glm::mat4(1.0f);
         projection = glm::perspective(glm::radians(FOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view{};
+        std::cout << "last Frame: " << lastFrame << std::endl;
+        Objects[activeObject].setAround(aroundCam);
         if (activeCam == 0)
             view = Objects[activeObject].get_chase_cam_view_mat();
+        else if(activeCam == 1)
+            view = Objects[activeObject].get_fp_cam_view_mat();
         else
             view = eagle_view;
 
@@ -216,7 +275,6 @@ int main()
             ourShader.setMat4("model", i.get_model_mat());
             if ((err = glGetError()))
                 std::cerr << "\n\nourShader.setMat4(\"model\", i.get_model_mat()): " << err << "\n\n";
-
             glDrawElements(GL_TRIANGLES, 3 * (i.m_model->num_faces), GL_UNSIGNED_INT, 0);
             if ((err = glGetError()))
                 std::cerr << "\n\nglDrawElements(GL_TRIANGLES, 3 * (i.m_model->num_faces), GL_UNSIGNED_INT, 0): " << err << "\n\n";
@@ -236,7 +294,10 @@ int main()
             ourShader.setMat4("model", Objects[i].get_model_mat());
             if ((err = glGetError()))
                 std::cerr << "\n\nourShader.setMat4(\"model\", Objects[" << i << "].get_model_mat()): " << err << "\n\n";
-
+            if(activeCam == 1){
+                if(i == activeObject)
+                    continue;
+            }
             glDrawElements(GL_TRIANGLES, 3 * (Objects[i].m_model->num_faces), GL_UNSIGNED_INT, 0);
             if ((err = glGetError()))
                 std::cerr << "\n\nglDrawElements(GL_TRIANGLES, 3 * (Objects[" << i << "].m_model->num_faces), GL_UNSIGNED_INT, 0): " << err << "\n\n";
@@ -388,6 +449,8 @@ void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &ol
             }
             Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.2}});
         }
+
+
         old_time = glfwGetTime();
     }
 }
@@ -406,3 +469,5 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
         SCR_WIDTH = width;
     }
 }
+
+
