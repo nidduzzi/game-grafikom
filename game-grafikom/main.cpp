@@ -263,7 +263,7 @@ int main()
     double fps_timer{glfwGetTime()};
     int fps_count{};
     unsigned int err{glGetError()}, activeCam{}, activeObject{0};
-    glm::vec3 camFront{};
+    glm::vec3 camFront{glm::normalize(glm::vec3{cos(glm::radians(90.0f)) * cos(glm::radians(0.0f)), sin(glm::radians(0.0f)), sin(glm::radians(90.0f)) * cos(glm::radians(0.0f))})};
     glfwThis glfwargs{camFront, activeCam, numCams, activeObject, numObjects, Objects, true, NULL};
     glfwSetWindowUserPointer(window, &glfwargs);
 
