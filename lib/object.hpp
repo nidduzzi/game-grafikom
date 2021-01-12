@@ -19,7 +19,7 @@ private:
     glm::vec3 m_axis;                // rotation axis (sumbu rotasi)
     glm::quat m_rotation;            // rotation quaternion
     glm::vec3 m_scale;               // object scale (ukuran objek)
-    glm::vec3 m_around;              // object view target
+    glm::vec3 m_camFront;            // object view target
     glm::mat4 m_model_mat;           // model matrix
     glm::mat4 m_chase_view_mat;      // vie3 third person
     glm::mat4 m_fp_view_mat;         // view first person
@@ -35,14 +35,18 @@ private:
         if (this->m_changed)
         {
             this->m_model_mat = glm::translate(glm::mat4{1.0}, this->m_pos) * glm::mat4_cast(this->m_rotation) * glm::scale(glm::mat4{1.0}, this->m_scale);
-            this->m_chase_view_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{0.0, this->m_model->m_max_y + 1.4, -5.0, 1.0}}, glm::vec3{this->m_pos.x + this->m_around.x, this->m_pos.y + this->m_model->m_max_y + 0.05 + this->m_around.y, this->m_pos.z + this->m_around.z}, glm::vec3{0, 1, 0});
-            this->m_fp_view_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{0.0, this->m_model->m_max_y, -3.0, 1.0}}, glm::vec3{this->m_pos.x + this->m_around.x, this->m_pos.y + this->m_model->m_max_y + this->m_around.y, this->m_pos.z + this->m_around.z}, glm::vec3{0, 1, 0});
+            glm::vec3 chaseCamPos{0.0, this->m_model->m_max_y + 1.4, -5.0};
+            glm::vec3 chaseCamFront{chaseCamPos + this->m_camFront};
+            glm::vec3 fpCamPos{0.0, this->m_model->m_max_y, -3.0};
+            glm::vec3 fpCamFront{fpCamPos + this->m_camFront};
+            this->m_chase_view_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{chaseCamPos, 1.0}}, glm::vec3{this->m_model_mat * glm::vec4{chaseCamFront, 1.0}}, glm::vec3{0, 1, 0});
+            this->m_fp_view_mat = glm::lookAt(glm::vec3{this->m_model_mat * glm::vec4{fpCamPos, 1.0}}, glm::vec3{this->m_model_mat * glm::vec4{fpCamFront, 1.0}}, glm::vec3{0, 1, 0});
             this->m_changed = false;
         }
     }
 
 public:
-    object_t(model_t *model, glm::vec3 pos = glm::vec3{0, 0, 0}, glm::f32 angle = 0.0F, glm::vec3 axis = glm::vec3{1, 0, 0}, glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0}, glm::vec3 around = glm::vec3(0.0f)) : m_model{model}, m_pos{pos}, m_angle{angle}, m_scale{scale}, m_around{around}, m_model_mat{1.0}, m_changed{true}, m_hbox{{}}
+    object_t(model_t *model, glm::vec3 pos = glm::vec3{0, 0, 0}, glm::f32 angle = 0.0F, glm::vec3 axis = glm::vec3{1, 0, 0}, glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0}, glm::vec3 camFront = glm::vec3(0.0f)) : m_model{model}, m_pos{pos}, m_angle{angle}, m_scale{scale}, m_camFront{camFront}, m_model_mat{1.0}, m_changed{true}, m_hbox{{}}
     {
         this->m_axis = glm::normalize(axis);
         this->m_rotation = glm::rotate(glm::quat{glm::vec3{0.0}}, angle, glm::normalize(axis));
@@ -145,9 +149,7 @@ public:
     // @param angle_Z rotate object by angle_Z in radians around the z axis
     void rotate_by(glm::f32 angle_X, glm::f32 angle_Y, glm::f32 angle_Z)
     {
-        glm::quat tmp_quat = glm::rotate(glm::quat{glm::vec3{0.0}}, angle_X, glm::vec3{1.0, 0.0, 0.0});
-        tmp_quat = glm::rotate(tmp_quat, angle_Y, glm::vec3{0.0, 1.0, 0.0});
-        tmp_quat = glm::rotate(tmp_quat, angle_Z, glm::vec3{0.0, 0.0, 1.0});
+        glm::quat tmp_quat{glm::vec3{angle_X, angle_Y, angle_Z}};
         this->m_rotation = this->m_rotation * tmp_quat;
         this->m_angle = glm::angle(this->m_rotation);
         this->m_axis = glm::axis(this->m_rotation);
@@ -164,9 +166,7 @@ public:
 
     void rotate_to(glm::f32 angle_X, glm::f32 angle_Y, glm::f32 angle_Z)
     {
-        this->m_rotation = glm::rotate(glm::quat{glm::vec3{0.0}}, angle_X, glm::vec3{1.0, 0.0, 0.0});
-        this->m_rotation = glm::rotate(this->m_rotation, angle_Y, glm::vec3{0.0, 1.0, 0.0});
-        this->m_rotation = glm::rotate(this->m_rotation, angle_Z, glm::vec3{0.0, 0.0, 1.0});
+        this->m_rotation = glm::quat{glm::vec3{angle_X, angle_Y, angle_Z}};
         this->m_angle = glm::angle(this->m_rotation);
         this->m_axis = glm::axis(this->m_rotation);
         this->m_changed = true;
@@ -196,8 +196,9 @@ public:
         this->m_changed = true;
     }
 
-    void setAround(glm::vec3 aroundCam){
-        this->m_around = aroundCam;
+    void setCamFront(glm::vec3 aroundCam)
+    {
+        this->m_camFront = aroundCam;
         this->m_changed = true;
     }
 
@@ -210,8 +211,6 @@ public:
     {
         return !(this->operator==(rhs));
     }
-
-
 };
 
 #endif

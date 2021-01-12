@@ -11,66 +11,115 @@
 #include <iostream>
 #include "../lib/model.hpp"
 #include "../lib/object.hpp"
-int activeCam{0};
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject, int &activeCam);
 
-void toggle_key(GLFWwindow* window, int key, int scancode, int action, int mods)
+struct glfwThis
 {
-    if(key == GLFW_KEY_C && action == GLFW_PRESS)
+    glm::vec3 &camFront;
+    unsigned int &activeCam;
+    const std::size_t &numCams;
+    unsigned int &activeObject;
+    const std::size_t &numObjects;
+    std::vector<object_t> &Objects;
+    bool center_cursor;
+    void **voip;
+};
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+void processInput(GLFWwindow *window, glfwThis *glfwargs);
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    glfwThis *glfwargs{static_cast<glfwThis *>(glfwGetWindowUserPointer(window))};
+
+    if (key == GLFW_KEY_C && action == GLFW_PRESS)
     {
-        activeCam = (activeCam + 1) % 3;
+        glfwargs->activeCam = (glfwargs->activeCam + 1) % glfwargs->numCams;
+        glfwargs->center_cursor = true;
+        glfwargs->camFront = glm::normalize(glm::vec3{cos(glm::radians(90.0f)) * cos(glm::radians(0.0f)), sin(glm::radians(0.0f)), sin(glm::radians(90.0f)) * cos(glm::radians(0.0f))});
     }
+    // Set active model
+    // ================
+    if ((glfwargs->Objects.size() > 0) && (key == GLFW_KEY_1) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 0;
+    }
+    else if ((glfwargs->Objects.size() > 1) && (key == GLFW_KEY_2) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 1;
+    }
+    else if ((glfwargs->Objects.size() > 2) && (key == GLFW_KEY_3) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 2;
+    }
+    else if ((glfwargs->Objects.size() > 3) && (key == GLFW_KEY_4) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 3;
+    }
+    else if ((glfwargs->Objects.size() > 4) && (key == GLFW_KEY_5) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 4;
+    }
+    else if ((glfwargs->Objects.size() > 5) && (key == GLFW_KEY_6) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 5;
+    }
+    else if ((glfwargs->Objects.size() > 6) && (key == GLFW_KEY_7) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 6;
+    }
+    else if ((glfwargs->Objects.size() > 7) && (key == GLFW_KEY_8) && (action == GLFW_PRESS))
+    {
+        glfwargs->activeObject = 7;
+    }
+
+    if ((key == GLFW_KEY_ESCAPE) && (action == GLFW_PRESS))
+        glfwSetWindowShouldClose(window, true);
 }
 
 // settings
-unsigned int SCR_WIDTH = 1000;
+unsigned int SCR_WIDTH = 1920;
 unsigned int SCR_HEIGHT = 1000;
 
-// settings for look around
-glm::vec3 aroundCam = glm::vec3(0.0f, 0.0f, 0.0f);
-bool firstMouse = true;
-float yaw = -90.0f;
-float pitch = 0.0f;
-float lastX = SCR_WIDTH / 1.0;
-float lastY = SCR_HEIGHT / 1.0;
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
-
-
-
-void mouse_callback(GLFWwindow* window, double xpos, double ypos){
-    if (firstMouse) {
+void mouse_callback(GLFWwindow *window, double xpos, double ypos)
+{
+    glfwThis *glfwargs{static_cast<glfwThis *>(glfwGetWindowUserPointer(window))};
+    // settings for look around
+    static float yaw{90.0f};
+    static float pitch{0.0f};
+    static float lastX{SCR_WIDTH / 1.0f};
+    static float lastY{SCR_HEIGHT / 1.0f};
+    if (glfwargs->center_cursor)
+    {
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+        yaw = 90.0f;
+        pitch = 0.0f;
+        glfwargs->center_cursor = false;
     }
-    float xoffset = lastX - xpos;
+    float xoffset = xpos - lastX;
     float yoffset = lastY - ypos;
 
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.2f;
+    float sensitivity = 0.05f;
 
     xoffset *= sensitivity;
     yoffset *= sensitivity;
     yaw += xoffset;
     pitch += yoffset;
 
-    if (pitch > 180.0f)
-    pitch = 180.0f;
+    if (pitch > 89.0f)
+        pitch = 89.0f;
 
-    if (pitch < -180.0f)
-    pitch = -180.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
 
     glm::vec3 front;
     front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     front.y = sin(glm::radians(pitch));
     front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    aroundCam = glm::normalize(front);
+    glfwargs->camFront = glm::normalize(front);
 }
-
 
 int main()
 {
@@ -99,9 +148,10 @@ int main()
 
     // glfw window creation
     // --------------------
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    // glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+    glfwWindowHint(GLFW_CENTER_CURSOR, GLFW_FALSE);
+    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
     glfwWindowHint(GLFW_SAMPLES, 4);
     GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "UAS Grafikom", NULL, NULL);
     if (window == NULL)
@@ -112,8 +162,9 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetKeyCallback(window, toggle_key);
-
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     // glad: load all OpenGL function pointers
     // ---------------------------------------
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -208,12 +259,13 @@ int main()
             Asphalt.push_back(object_t{Models[0], glm::vec3{2.0f * static_cast<float>(i) + 1.0f, -0.505f, 2.0f * static_cast<float>(j) + 1.0f}});
     }
     glm::mat4 eagle_view{glm::lookAt(glm::vec3{0.0f, std::max(arena_length, arena_width) / (std::tan(glm::radians(FOV / 2.0f))), 0.0f}, glm::vec3{}, glm::vec3{0.0, 0.0, 1.0})};
-    const std::size_t numObjects{Objects.size()};
-    double old_time{glfwGetTime()}, fps_timer{glfwGetTime()};
-    int fps_count{}, activeObject{0}, numCams{3};
-    unsigned int err{glGetError()};
-
-    glfwSetCursorPosCallback(window, mouse_callback);
+    const std::size_t numObjects{Objects.size()}, numCams{3};
+    double fps_timer{glfwGetTime()};
+    int fps_count{};
+    unsigned int err{glGetError()}, activeCam{}, activeObject{0};
+    glm::vec3 camFront{};
+    glfwThis glfwargs{camFront, activeCam, numCams, activeObject, numObjects, Objects, true, NULL};
+    glfwSetWindowUserPointer(window, &glfwargs);
 
     // render loop
     // -----------
@@ -221,15 +273,10 @@ int main()
     {
         // input
         // -----
-        processInput(window, Objects, old_time, activeObject, activeCam);
+        processInput(window, &glfwargs);
         // render
         // ------
         glClearColor(191.0f / 255.0f, 224.0f / 255.0f, 1.0f, 1.0f);
-
-        //timing for smooth around view
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
 
         if ((err = glGetError()))
             std::cerr << "\n\nglClearColor(191.0f / 255.0f, 224.0f / 255.0f, 1.0f, 1.0f): " << err << "\n\n";
@@ -243,11 +290,10 @@ int main()
         glm::mat4 projection = glm::mat4(1.0f);
         projection = glm::perspective(glm::radians(FOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view{};
-        std::cout << "last Frame: " << lastFrame << std::endl;
-        Objects[activeObject].setAround(aroundCam);
+        Objects[activeObject].setCamFront(camFront);
         if (activeCam == 0)
             view = Objects[activeObject].get_chase_cam_view_mat();
-        else if(activeCam == 1)
+        else if (activeCam == 1)
             view = Objects[activeObject].get_fp_cam_view_mat();
         else
             view = eagle_view;
@@ -260,7 +306,7 @@ int main()
         if ((err = glGetError()))
             std::cerr << "\n\nourShader.setMat4(\"view\", view): " << err << "\n\n";
         // render models
-        for (auto i : Asphalt)
+        for (auto &i : Asphalt)
         {
             glBindVertexArray((i.m_model->VAO));
 
@@ -294,8 +340,9 @@ int main()
             ourShader.setMat4("model", Objects[i].get_model_mat());
             if ((err = glGetError()))
                 std::cerr << "\n\nourShader.setMat4(\"model\", Objects[" << i << "].get_model_mat()): " << err << "\n\n";
-            if(activeCam == 1){
-                if(i == activeObject)
+            if (activeCam == 1)
+            {
+                if (static_cast<unsigned int>(i) == activeObject)
                     continue;
             }
             glDrawElements(GL_TRIANGLES, 3 * (Objects[i].m_model->num_faces), GL_UNSIGNED_INT, 0);
@@ -348,46 +395,9 @@ int main()
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
-void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &old_time, int &activeObject, int &activeCam)
+void processInput(GLFWwindow *window, glfwThis *glfwargs)
 {
-    // Set active model
-    // ================
-    if ((Objects.size() > 0) && (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS))
-    {
-        activeObject = 0;
-    }
-    else if ((Objects.size() > 1) && (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS))
-    {
-        activeObject = 1;
-    }
-    else if ((Objects.size() > 2) && (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS))
-    {
-        activeObject = 2;
-    }
-    else if ((Objects.size() > 3) && (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS))
-    {
-        activeObject = 3;
-    }
-    else if ((Objects.size() > 4) && (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS))
-    {
-        activeObject = 4;
-    }
-    else if ((Objects.size() > 5) && (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS))
-    {
-        activeObject = 5;
-    }
-    else if ((Objects.size() > 6) && (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS))
-    {
-        activeObject = 6;
-    }
-    else if ((Objects.size() > 7) && (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS))
-    {
-        activeObject = 7;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
+    static double old_time{glfwGetTime()};
     if (glfwGetTime() - old_time > 1.0 / 60.0)
     {
         // Rotate
@@ -395,61 +405,84 @@ void processInput(GLFWwindow *window, std::vector<object_t> &Objects, double &ol
         // z-axis
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 0.0, -1.0));
+            glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 0.0, -1.0));
         }
         else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 0.0, 1.0));
+            glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 0.0, 1.0));
         }
         // y-axis
         //ARROW LEFT RIGHT - swapped with  F G ----------------------------------
 
         // x-axis
-        if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(-1.0, 0.0, 0.0));
+            glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(-1.0, 0.0, 0.0));
         }
         else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
         {
-            Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(1.0, 0.0, 0.0));
+            glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(1.0, 0.0, 0.0));
         }
         // Scale
         // =====
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
         {
-            Objects[activeObject].scale_by(glm::vec3(1.02, 1.02, 1.02));
+            glfwargs->Objects[glfwargs->activeObject].scale_by(glm::vec3(1.02, 1.02, 1.02));
         }
-        else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         {
-            Objects[activeObject].scale_by(glm::vec3(0.98, 0.98, 0.98));
+            glfwargs->Objects[glfwargs->activeObject].scale_by(glm::vec3(0.98, 0.98, 0.98));
         }
         // Translate
         // =========
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         {
             if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
             {
-                Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
             }
             else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
             {
-                Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
             }
-            Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, 0.2}});
+            glfwargs->Objects[glfwargs->activeObject].move_by(glm::vec3{glfwargs->Objects[glfwargs->activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, 0.2}});
         }
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         {
             if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
             {
-                Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
             }
             else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
             {
-                Objects[activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
             }
-            Objects[activeObject].move_by(glm::vec3{Objects[activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.2}});
+            glfwargs->Objects[glfwargs->activeObject].move_by(glm::vec3{glfwargs->Objects[glfwargs->activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.2}});
         }
-
+        else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        {
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            {
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
+            }
+            else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            {
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
+            }
+            glfwargs->Objects[glfwargs->activeObject].move_by(glm::vec3{glfwargs->Objects[glfwargs->activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, 0.2}});
+        }
+        else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        {
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            {
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, -1.0, 0.0));
+            }
+            else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            {
+                glfwargs->Objects[glfwargs->activeObject].rotate_by(glm::radians(2.0f), glm::vec3(0.0, 1.0, 0.0));
+            }
+            glfwargs->Objects[glfwargs->activeObject].move_by(glm::vec3{glfwargs->Objects[glfwargs->activeObject].get_rotation_quat() * glm::vec3{0.0, 0.0, -0.2}});
+        }
 
         old_time = glfwGetTime();
     }
@@ -469,5 +502,3 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
         SCR_WIDTH = width;
     }
 }
-
-
