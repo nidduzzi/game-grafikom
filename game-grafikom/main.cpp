@@ -12,6 +12,12 @@
 #include "../lib/model.hpp"
 #include "../lib/object.hpp"
 
+// Kelompok 7
+// Ahmad Izzuddin 1908919               C2 2019
+// Fajar Zuliansyah Trihutama 1905394   C2 2019
+// Muhammad Iqbal Zain 1901423          C2 2019
+// Non Alyya Yan Hari 1804430           C 2018
+
 struct glfwThis
 {
     glm::vec3 &camFront;
